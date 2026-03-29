@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Period Tracker - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Quicksand:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { box-sizing: border-box; }
+    * { font-family: 'Quicksand', sans-serif; }
+    .font-display { font-family: 'Cormorant Garamond', serif; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+    @keyframes successPop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    @keyframes tabTransition {
+      0% { opacity: 0; transform: translateX(30px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+    .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+    .animate-slide-in { animation: slideIn 0.4s ease-out forwards; }
+    .animate-pulse-soft { animation: pulse-soft 3s ease-in-out infinite; }
+    .animate-success { animation: successPop 0.4s ease-out; }
+    .animate-tab-enter { animation: tabTransition 0.4s ease-out forwards; }
+    .glass {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #e879a0 0%, #d4547a 100%);
+      transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(212, 84, 122, 0.4);
+    }
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .symptom-chip {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .symptom-chip.active {
+      background: linear-gradient(135deg, #e879a0 0%, #d4547a 100%) !important;
+      color: white !important;
+      border-color: #d4547a !important;
+      transform: scale(1.05);
+    }
+    .mood-btn {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .mood-btn.active {
+      transform: scale(1.2);
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    }
+    .flow-btn {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .flow-btn.active {
+      background: linear-gradient(135deg, #e879a0 0%, #d4547a 100%) !important;
+      color: white !important;
+      border-color: #d4547a !important;
+    }
+    .calendar-day {
+      transition: all 0.2s ease;
+    }
+    .calendar-day:hover {
+      transform: scale(1.1);
+    }
+    .calendar-day.has-period {
+      background: linear-gradient(135deg, #f9a8c9 0%, #e879a0 100%);
+      color: white;
+    }
+    .calendar-day.has-symptom {
+      border: 2px solid #a855f7;
+    }
+    .calendar-day.today {
+      border: 2px solid #d4547a;
+    }
+    .tip-card {
+      transition: all 0.3s ease;
+    }
+    .tip-card:hover {
+      transform: translateY(-5px);
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #e879a0;
+      box-shadow: 0 0 0 3px rgba(232, 121, 160, 0.2);
+    }
+    /* Progress bar styles */
+    .progress-bar {
+      transition: width 0.5s ease-in-out;
+    }
+    .step-dot {
+      transition: all 0.3s ease;
+    }
+    .step-dot.completed {
+      background: linear-gradient(135deg, #e879a0 0%, #d4547a 100%);
+      color: white;
+      transform: scale(1.1);
+    }
+    .step-dot.active {
+      border-color: #d4547a;
+      color: #d4547a;
+      transform: scale(1.1);
+    }
+    .next-hint {
+      animation: fadeIn 0.5s ease-out 0.3s both;
+    }
+  </style>
+</head>
+<body class="h-full bg-gradient-to-br from-rose-50 via-pink-50 to-fuchsia-50 overflow-auto">
+
+  <!-- Loading State -->
+  <div id="loading-screen" class="min-h-full w-full flex items-center justify-center">
+    <div class="text-center animate-fade-in">
+      <div class="text-6xl mb-4 animate-pulse-soft">🌸</div>
+      <p class="text-rose-400 text-lg">Loading your dashboard...</p>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="min-h-full w-full p-6 hidden">
+    <div class="max-w-4xl mx-auto animate-fade-in">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h1 class="font-display text-3xl font-bold text-gray-800">Hello, <span id="user-display-name">Friend</span> 💐</h1>
+          <p class="text-gray-500" id="today-date"></p>
+        </div>
+        <button onclick="handleLogout()" class="text-rose-400 hover:text-rose-600 text-sm font-medium transition-colors">Logout</button>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="glass rounded-2xl p-4 text-center">
+          <div class="text-3xl mb-1">📅</div>
+          <p class="text-2xl font-bold text-gray-800" id="cycle-day">--</p>
+          <p class="text-xs text-gray-500">Cycle Day</p>
+        </div>
+        <div class="glass rounded-2xl p-4 text-center">
+          <div class="text-3xl mb-1">🩸</div>
+          <p class="text-2xl font-bold text-gray-800" id="period-days">0</p>
+          <p class="text-xs text-gray-500">Period Days</p>
+        </div>
+        <div class="glass rounded-2xl p-4 text-center">
+          <div class="text-3xl mb-1">💭</div>
+          <p class="text-2xl font-bold text-gray-800" id="current-mood">--</p>
+          <p class="text-xs text-gray-500">Today's Mood</p>
+        </div>
+        <div class="glass rounded-2xl p-4 text-center">
+          <div class="text-3xl mb-1">⏰</div>
+          <p class="text-2xl font-bold text-gray-800" id="reminder-status">Off</p>
+          <p class="text-xs text-gray-500">Reminders</p>
+        </div>
+      </div>
+
+      <!-- Progress Steps -->
+      <div id="progress-tracker" class="glass rounded-2xl p-4 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-sm font-medium text-gray-600">Today's Progress</p>
+          <p class="text-xs text-gray-400" id="progress-text">0 of 3 completed</p>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+          <div id="progress-fill" class="progress-bar bg-gradient-to-r from-pink-400 to-rose-500 h-2 rounded-full" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between">
+          <div class="flex flex-col items-center gap-1">
+            <div id="step-log" class="step-dot w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-xs font-bold text-gray-400 cursor-pointer" onclick="showTab('log')">1</div>
+            <span class="text-xs text-gray-500">Log</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <div id="step-symptoms" class="step-dot w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-xs font-bold text-gray-400 cursor-pointer" onclick="showTab('symptoms')">2</div>
+            <span class="text-xs text-gray-500">Symptoms</span>
+          </div>
+          <div class="flex flex-col items-center gap-1">
+            <div id="step-reminders" class="step-dot w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-xs font-bold text-gray-400 cursor-pointer" onclick="showTab('reminders')">3</div>
+            <span class="text-xs text-gray-500">Reminders</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+        <button onclick="showTab('calendar')" class="tab-btn px-5 py-2 rounded-full text-sm font-medium bg-rose-400 text-white whitespace-nowrap" data-tab="calendar">📅 Calendar</button>
+        <button onclick="showTab('log')" class="tab-btn px-5 py-2 rounded-full text-sm font-medium bg-white/50 text-gray-600 whitespace-nowrap" data-tab="log">📝 Log Today</button>
+        <button onclick="showTab('symptoms')" class="tab-btn px-5 py-2 rounded-full text-sm font-medium bg-white/50 text-gray-600 whitespace-nowrap" data-tab="symptoms">🩺 Symptoms</button>
+        <button onclick="showTab('history')" class="tab-btn px-5 py-2 rounded-full text-sm font-medium bg-white/50 text-gray-600 whitespace-nowrap" data-tab="history">📊 History</button>
+        <button onclick="showTab('reminders')" class="tab-btn px-5 py-2 rounded-full text-sm font-medium bg-white/50 text-gray-600 whitespace-nowrap" data-tab="reminders">⏰ Reminders</button>
+        <button onclick="showTab('tips')" class="tab-btn px-5 py-2 rounded-full text-sm font-medium bg-white/50 text-gray-600 whitespace-nowrap" data-tab="tips">💡 Tips</button>
+      </div>
+
+      <!-- Calendar Tab -->
+      <div id="tab-calendar" class="tab-content glass rounded-3xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <button onclick="changeMonth(-1)" class="p-2 hover:bg-white/50 rounded-full text-xl transition-colors">←</button>
+          <h3 class="font-display text-2xl font-bold text-gray-800" id="calendar-month"></h3>
+          <button onclick="changeMonth(1)" class="p-2 hover:bg-white/50 rounded-full text-xl transition-colors">→</button>
+        </div>
+        <div class="grid grid-cols-7 gap-2 text-center mb-4">
+          <div class="text-xs font-medium text-gray-400">Sun</div>
+          <div class="text-xs font-medium text-gray-400">Mon</div>
+          <div class="text-xs font-medium text-gray-400">Tue</div>
+          <div class="text-xs font-medium text-gray-400">Wed</div>
+          <div class="text-xs font-medium text-gray-400">Thu</div>
+          <div class="text-xs font-medium text-gray-400">Fri</div>
+          <div class="text-xs font-medium text-gray-400">Sat</div>
+        </div>
+        <div id="calendar-grid" class="grid grid-cols-7 gap-2"></div>
+        <div class="mt-6 flex items-center gap-4 text-sm text-gray-500 flex-wrap">
+          <span class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-gradient-to-r from-pink-300 to-rose-400"></span> Period</span>
+          <span class="flex items-center gap-2"><span class="w-4 h-4 rounded-full border-2 border-purple-500"></span> Symptoms</span>
+          <span class="flex items-center gap-2"><span class="w-4 h-4 rounded-full border-2 border-rose-400"></span> Today</span>
+        </div>
+        <!-- Auto-move hint -->
+        <div class="mt-4 text-center">
+          <button onclick="showTab('log')" class="text-rose-400 hover:text-rose-600 text-sm font-medium transition-colors">
+            Start logging today's entry →
+          </button>
+        </div>
+      </div>
+
+      <!-- Log Today Tab -->
+      <div id="tab-log" class="tab-content glass rounded-3xl p-6 hidden">
+        <h3 class="font-display text-2xl font-bold text-gray-800 mb-6">Log Today's Entry 📝</h3>
+        
+        <!-- Success message area -->
+        <div id="log-success" class="hidden mb-6 bg-green-50 border border-green-200 rounded-2xl p-4 text-center animate-success">
+          <div class="text-3xl mb-2">✅</div>
+          <p class="text-green-700 font-medium">Entry saved! Moving to symptoms...</p>
+        </div>
+
+        <div id="log-form-content">
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-600 mb-3">Flow Level</label>
+            <div class="flex gap-3 flex-wrap">
+              <button onclick="setFlow('none')" class="flow-btn px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-flow="none">None</button>
+              <button onclick="setFlow('spotting')" class="flow-btn px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-flow="spotting">Spotting</button>
+              <button onclick="setFlow('light')" class="flow-btn px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-flow="light">Light</button>
+              <button onclick="setFlow('medium')" class="flow-btn px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-flow="medium">Medium</button>
+              <button onclick="setFlow('heavy')" class="flow-btn px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-flow="heavy">Heavy</button>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-600 mb-3">How are you feeling?</label>
+            <div class="flex gap-4 flex-wrap">
+              <button onclick="setMood('😊')" class="mood-btn text-3xl p-2" data-mood="😊">😊</button>
+              <button onclick="setMood('😌')" class="mood-btn text-3xl p-2" data-mood="😌">😌</button>
+              <button onclick="setMood('😔')" class="mood-btn text-3xl p-2" data-mood="😔">😔</button>
+              <button onclick="setMood('😤')" class="mood-btn text-3xl p-2" data-mood="😤">😤</button>
+              <button onclick="setMood('😢')" class="mood-btn text-3xl p-2" data-mood="😢">😢</button>
+              <button onclick="setMood('😴')" class="mood-btn text-3xl p-2" data-mood="😴">😴</button>
+              <button onclick="setMood('🥰')" class="mood-btn text-3xl p-2" data-mood="🥰">🥰</button>
+              <button onclick="setMood('😰')" class="mood-btn text-3xl p-2" data-mood="😰">😰</button>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-600 mb-2" for="notes-input">Notes</label>
+            <textarea id="notes-input" rows="3" placeholder="How was your day?" class="w-full px-4 py-3 rounded-2xl border border-pink-200 bg-white/70 text-gray-700 placeholder-gray-400 resize-none"></textarea>
+          </div>
+          <button onclick="saveLog()" id="save-log-btn" class="btn-primary w-full text-white py-4 rounded-2xl text-lg font-semibold">Save & Continue to Symptoms →</button>
+          <p class="text-center text-xs text-gray-400 mt-3">After saving, you'll move to symptom tracking</p>
+        </div>
+      </div>
+
+      <!-- Symptoms Tab -->
+      <div id="tab-symptoms" class="tab-content glass rounded-3xl p-6 hidden">
+        <h3 class="font-display text-2xl font-bold text-gray-800 mb-2">Track Symptoms 🩺</h3>
+        <p class="text-sm text-gray-500 mb-6">Select all symptoms you're experiencing today</p>
+
+        <!-- Success message area -->
+        <div id="symptoms-success" class="hidden mb-6 bg-green-50 border border-green-200 rounded-2xl p-4 text-center animate-success">
+          <div class="text-3xl mb-2">✅</div>
+          <p class="text-green-700 font-medium">Symptoms saved! Moving to reminders...</p>
+        </div>
+
+        <div id="symptoms-form-content">
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-600 mb-3">Physical Symptoms</label>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="toggleSymptom('cramps')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="cramps">😣 Cramps</button>
+              <button onclick="toggleSymptom('headache')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="headache">🤕 Headache</button>
+              <button onclick="toggleSymptom('backpain')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="backpain">💆 Back Pain</button>
+              <button onclick="toggleSymptom('bloating')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="bloating">🎈 Bloating</button>
+              <button onclick="toggleSymptom('fatigue')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="fatigue">😴 Fatigue</button>
+              <button onclick="toggleSymptom('nausea')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="nausea">🤢 Nausea</button>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-600 mb-3">Skin &amp; Body</label>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="toggleSymptom('acne')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="acne">😖 Acne</button>
+              <button onclick="toggleSymptom('breast-tenderness')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="breast-tenderness">💗 Breast Tenderness</button>
+              <button onclick="toggleSymptom('cravings')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="cravings">🍫 Cravings</button>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-600 mb-3">Emotional</label>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="toggleSymptom('anxiety')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="anxiety">😰 Anxiety</button>
+              <button onclick="toggleSymptom('mood-swings')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="mood-swings">🎭 Mood Swings</button>
+              <button onclick="toggleSymptom('irritability')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="irritability">😤 Irritability</button>
+              <button onclick="toggleSymptom('sadness')" class="symptom-chip px-4 py-2 rounded-full text-sm bg-white/50 border border-pink-200" data-symptom="sadness">😢 Sadness</button>
+            </div>
+          </div>
+
+          <div id="selected-symptoms-display" class="mb-4 hidden">
+            <label class="block text-sm font-medium text-gray-600 mb-2">Selected: <span id="symptom-count" class="text-rose-500 font-bold">0</span></label>
+            <p id="symptom-list-text" class="text-sm text-gray-500 italic"></p>
+          </div>
+
+          <button onclick="saveSymptoms()" id="save-symptoms-btn" class="btn-primary w-full text-white py-4 rounded-2xl text-lg font-semibold">Save & Continue to Reminders →</button>
+          <button onclick="skipToNext('symptoms')" class="w-full text-gray-400 hover:text-gray-600 py-2 text-sm font-medium mt-2 transition-colors">Skip for now →</button>
+          <p class="text-center text-xs text-gray-400 mt-2">After saving, you'll move to reminders</p>
+        </div>
+
+        <div id="today-symptoms-section" class="mt-6 hidden">
+          <h4 class="font-semibold text-gray-700 mb-3">Today's Logged Symptoms</h4>
+          <div id="today-symptoms-list" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+
+      <!-- History Tab -->
+      <div id="tab-history" class="tab-content glass rounded-3xl p-6 hidden">
+        <h3 class="font-display text-2xl font-bold text-gray-800 mb-6">History 📊</h3>
+        <div id="history-list" class="space-y-3">
+          <p class="text-gray-500 text-center py-8">No entries yet. Start logging to see your history!</p>
+        </div>
+      </div>
+
+      <!-- Reminders Tab -->
+      <div id="tab-reminders" class="tab-content glass rounded-3xl p-6 hidden">
+        <h3 class="font-display text-2xl font-bold text-gray-800 mb-6">Daily Reminders ⏰</h3>
+
+        <!-- Success message area -->
+        <div id="reminders-success" class="hidden mb-6 bg-green-50 border border-green-200 rounded-2xl p-4 text-center animate-success">
+          <div class="text-3xl mb-2">🎉</div>
+          <p class="text-green-700 font-medium">All done! Moving to your history...</p>
+        </div>
+
+        <div class="space-y-4">
+          <div class="bg-white/50 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h4 class="font-semibold text-gray-800">Daily Log Reminder</h4>
+                <p class="text-sm text-gray-500">Get reminded to log your cycle</p>
+              </div>
+              <button onclick="toggleReminder()" id="reminder-toggle" class="w-14 h-8 rounded-full bg-gray-300 relative transition-colors">
+                <span class="absolute left-1 top-1 w-6 h-6 rounded-full bg-white shadow transition-transform"></span>
+              </button>
+            </div>
+            <div id="reminder-time-section" class="hidden">
+              <label class="block text-sm font-medium text-gray-600 mb-2" for="reminder-time">Reminder Time</label>
+              <div class="flex items-center gap-3">
+                <input type="time" id="reminder-time" value="09:00" class="px-4 py-3 rounded-xl border border-pink-200 bg-white/70 text-gray-700">
+                <button onclick="saveReminder()" class="px-4 py-3 bg-rose-400 text-white rounded-xl text-sm font-medium hover:bg-rose-500 transition-colors">Save & View History →</button>
+              </div>
+            </div>
+          </div>
+          <button onclick="skipToNext('reminders')" class="w-full text-gray-400 hover:text-gray-600 py-2 text-sm font-medium transition-colors">Skip & View History →</button>
+          <div class="bg-white/50 rounded-2xl p-5">
+            <h4 class="font-semibold text-gray-800 mb-2">💡 Reminder Tips</h4>
+            <ul class="text-sm text-gray-600 space-y-2">
+              <li>• Log at the same time daily for best tracking</li>
+              <li>• Morning logging helps start your day mindfully</li>
+              <li>• Evening logging captures the full day's experience</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tips Tab -->
+      <div id="tab-tips" class="tab-content glass rounded-3xl p-6 hidden">
+        <h3 class="font-display text-2xl font-bold text-gray-800 mb-6">Wellness Tips 💡</h3>
+        <div class="space-y-4">
+          <div class="tip-card bg-gradient-to-r from-rose-100 to-pink-100 rounded-2xl p-5">
+            <div class="text-2xl mb-2">🧘</div>
+            <h4 class="font-semibold text-gray-800 mb-1">Gentle Exercise</h4>
+            <p class="text-sm text-gray-600">Light yoga, walking, or stretching can help reduce cramps and boost mood. Try 15-20 minutes of gentle movement.</p>
+          </div>
+          <div class="tip-card bg-gradient-to-r from-purple-100 to-fuchsia-100 rounded-2xl p-5">
+            <div class="text-2xl mb-2">🫖</div>
+            <h4 class="font-semibold text-gray-800 mb-1">Warm Comfort</h4>
+            <p class="text-sm text-gray-600">A heating pad on your lower abdomen or warm herbal tea can soothe cramps naturally. Chamomile and ginger are great choices.</p>
+          </div>
+          <div class="tip-card bg-gradient-to-r from-blue-100 to-indigo-100 rounded-2xl p-5">
+            <div class="text-2xl mb-2">💧</div>
+            <h4 class="font-semibold text-gray-800 mb-1">Stay Hydrated</h4>
+            <p class="text-sm text-gray-600">Drinking plenty of water helps reduce bloating and can ease headaches. Aim for 8 glasses throughout the day.</p>
+          </div>
+          <div class="tip-card bg-gradient-to-r from-green-100 to-teal-100 rounded-2xl p-5">
+            <div class="text-2xl mb-2">🥗</div>
+            <h4 class="font-semibold text-gray-800 mb-1">Nourishing Foods</h4>
+            <p class="text-sm text-gray-600">Iron-rich foods like spinach and legumes help replace lost nutrients. Dark chocolate (in moderation!) can help with cravings.</p>
+          </div>
+          <div class="tip-card bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl p-5">
+            <div class="text-2xl mb-2">😴</div>
+            <h4 class="font-semibold text-gray-800 mb-1">Rest &amp; Sleep</h4>
+            <p class="text-sm text-gray-600">Your body needs extra rest during your period. Prioritize 7-9 hours of sleep and don't feel guilty about napping!</p>
+          </div>
+          <div class="tip-card bg-gradient-to-r from-pink-100 to-rose-100 rounded-2xl p-5">
+            <div class="text-2xl mb-2">🎭</div>
+            <h4 class="font-semibold text-gray-800 mb-1">Managing Mood Swings</h4>
+            <p class="text-sm text-gray-600">Hormonal changes are normal! Practice self-compassion, try deep breathing, and remember it's okay to feel your feelings.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- All Done Banner (shows after completing flow) -->
+      <div id="all-done-banner" class="hidden glass rounded-3xl p-6 mt-6 text-center animate-fade-in">
+        <div class="text-5xl mb-3">🎉</div>
+        <h3 class="font-display text-2xl font-bold text-gray-800 mb-2">All Done for Today!</h3>
+        <p class="text-gray-500 mb-4">You've completed today's logging. Great job taking care of yourself! 💕</p>
+        <div class="flex gap-3 justify-center flex-wrap">
+          <button onclick="showTab('calendar')" class="px-5 py-2 rounded-full text-sm font-medium bg-white/50 border border-pink-200 text-gray-600 hover:bg-white/70 transition-colors">📅 View Calendar</button>
+          <button onclick="showTab('history')" class="px-5 py-2 rounded-full text-sm font-medium bg-white/50 border border-pink-200 text-gray-600 hover:bg-white/70 transition-colors">📊 View History</button>
+          <button onclick="showTab('tips')" class="px-5 py-2 rounded-full text-sm font-medium bg-white/50 border border-pink-200 text-gray-600 hover:bg-white/70 transition-colors">💡 Wellness Tips</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50">
+    <span id="toast-message"></span>
+  </div>
+
+  <script>
+    // ===================== STATE =====================
+    let currentUser = null;
+    let authToken = null;
+    let allEntries = [];
+    let currentMonth = new Date();
+    let selectedFlow = 'none';
+    let selectedMood = '';
+    let selectedSymptoms = [];
+    let reminderEnabled = false;
+    let toastTimeout = null;
+
+    // Track completion steps for today
+    let completedSteps = {
+      log: false,
+      symptoms: false,
+      reminders: false
+    };
+
+    // Tab flow order: calendar -> log -> symptoms -> reminders -> history -> tips
+    const TAB_FLOW = ['calendar', 'log', 'symptoms', 'reminders', 'history', 'tips'];
+
+    const symptomLabels = {
+      'cramps': '😣 Cramps', 'headache': '🤕 Headache', 'backpain': '💆 Back Pain',
+      'bloating': '🎈 Bloating', 'fatigue': '😴 Fatigue', 'nausea': '🤢 Nausea',
+      'acne': '😖 Acne', 'breast-tenderness': '💗 Breast Tenderness', 'cravings': '🍫 Cravings',
+      'anxiety': '😰 Anxiety', 'mood-swings': '🎭 Mood Swings', 'irritability': '😤 Irritability',
+      'sadness': '😢 Sadness'
+    };
+
+    // ===================== AUTO-ADVANCE =====================
+    function advanceToNextTab(currentTab) {
+      const currentIndex = TAB_FLOW.indexOf(currentTab);
+      if (currentIndex === -1 || currentIndex >= TAB_FLOW.length - 1) return;
+
+      const nextTab = TAB_FLOW[currentIndex + 1];
+
+      // Show success message briefly then move
+      const successEl = document.getElementById(`${currentTab}-success`);
+      if (successEl) {
+        successEl.classList.remove('hidden');
+        successEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      // Wait then transition
+      setTimeout(() => {
+        if (successEl) successEl.classList.add('hidden');
+        showTab(nextTab);
+
+        // Scroll to top of the new tab
+        const tabEl = document.getElementById(`tab-${nextTab}`);
+        if (tabEl) {
+          tabEl.classList.add('animate-tab-enter');
+          tabEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => tabEl.classList.remove('animate-tab-enter'), 500);
+        }
+      }, 1200);
+    }
+
+    function skipToNext(currentTab) {
+      const currentIndex = TAB_FLOW.indexOf(currentTab);
+      if (currentIndex === -1 || currentIndex >= TAB_FLOW.length - 1) return;
+      const nextTab = TAB_FLOW[currentIndex + 1];
+      showTab(nextTab);
+      showToast(`Skipped to ${nextTab} 👉`);
+    }
+
+    // ===================== PROGRESS TRACKER =====================
+    function updateProgress() {
+      const today = getTodayString();
+
+      // Check what's completed today
+      completedSteps.log = allEntries.some(e => e.type === 'log' && e.date === today);
+      completedSteps.symptoms = allEntries.some(e => e.type === 'symptom' && e.date === today);
+      completedSteps.reminders = allEntries.some(e => e.type === 'reminder' && e.reminderEnabled);
+
+      const completed = Object.values(completedSteps).filter(Boolean).length;
+      const total = 3;
+      const percent = Math.round((completed / total) * 100);
+
+      // Update progress bar
+      const fill = document.getElementById('progress-fill');
+      if (fill) fill.style.width = percent + '%';
+
+      // Update text
+      const text = document.getElementById('progress-text');
+      if (text) text.textContent = `${completed} of ${total} completed`;
+
+      // Update step dots
+      ['log', 'symptoms', 'reminders'].forEach(step => {
+        const dot = document.getElementById(`step-${step}`);
+        if (!dot) return;
+
+        dot.classList.remove('completed', 'active');
+        if (completedSteps[step]) {
+          dot.classList.add('completed');
+          dot.textContent = '✓';
+        } else {
+          // Find first incomplete step and mark active
+          const stepNum = step === 'log' ? '1' : step === 'symptoms' ? '2' : '3';
+          dot.textContent = stepNum;
+        }
+      });
+
+      // Mark first incomplete step as active
+      const firstIncomplete = ['log', 'symptoms', 'reminders'].find(s => !completedSteps[s]);
+      if (firstIncomplete) {
+        const dot = document.getElementById(`step-${firstIncomplete}`);
+        if (dot) dot.classList.add('active');
+      }
+
+      // Show all-done banner if everything is complete
+      const banner = document.getElementById('all-done-banner');
+      if (banner) {
+        if (completed === total) {
+          banner.classList.remove('hidden');
+        } else {
+          banner.classList.add('hidden');
+        }
+      }
+    }
+
+    // ===================== AUTH CHECK =====================
+    async function initApp() {
+      authToken = localStorage.getItem('tracker_token');
+      const savedUser = localStorage.getItem('tracker_user');
+
+      if (!authToken || !savedUser) {
+        window.location.href = '/login';
+        return;
+      }
+
+      try {
+        currentUser = JSON.parse(savedUser);
+      } catch (e) {
+        window.location.href = '/login';
+        return;
+      }
+
+      // Verify token with server
+      try {
+        const response = await apiRequest('/api/auth/me');
+        if (!response.success) {
+          localStorage.removeItem('tracker_token');
+          localStorage.removeItem('tracker_user');
+          window.location.href = '/login';
+          return;
+        }
+        currentUser = response.user;
+        localStorage.setItem('tracker_user', JSON.stringify(currentUser));
+      } catch (error) {
+        console.warn('Auth verification failed, using cached data:', error);
+      }
+
+      // Setup UI
+      document.getElementById('user-display-name').textContent = currentUser.name;
+      document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+
+      // Load data
+      await loadEntries();
+      updateDashboard();
+      updateProgress();
+      renderCalendar();
+
+      // Show dashboard
+      document.getElementById('loading-screen').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+
+      // Auto-navigate to first incomplete step
+      autoNavigateToNextStep();
+    }
+
+    function autoNavigateToNextStep() {
+      const today = getTodayString();
+      const hasLog = allEntries.some(e => e.type === 'log' && e.date === today);
+      const hasSymptoms = allEntries.some(e => e.type === 'symptom' && e.date === today);
+      const hasReminder = allEntries.some(e => e.type === 'reminder' && e.reminderEnabled);
+
+      // If nothing done today, start at calendar (default)
+      // If log done but no symptoms, suggest symptoms
+      // If both done, stay on calendar
+      if (hasLog && !hasSymptoms) {
+        setTimeout(() => {
+          showTab('symptoms');
+          showToast('Continue where you left off! 🌸');
+        }, 500);
+      } else if (hasLog && hasSymptoms && !hasReminder) {
+        setTimeout(() => {
+          showTab('reminders');
+          showToast('Almost done! Set up reminders 🌸');
+        }, 500);
+      }
+    }
+
+    // ===================== API HELPER =====================
+    async function apiRequest(url, options = {}) {
+      const defaultOptions = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + authToken
+        }
+      };
+
+      const mergedOptions = {
+        ...defaultOptions,
+        ...options,
+        headers: { ...defaultOptions.headers, ...(options.headers || {}) }
+      };
+
+      const response = await fetch(url, mergedOptions);
+      const data = await response.json();
+
+      if (response.status === 401) {
+        localStorage.removeItem('tracker_token');
+        localStorage.removeItem('tracker_user');
+        window.location.href = '/login';
+        return;
+      }
+
+      return data;
+    }
+
+    // ===================== DATA OPERATIONS =====================
+    async function loadEntries() {
+      try {
+        const data = await apiRequest('/api/tracker/entries');
+        if (data && data.success) {
+          allEntries = data.entries;
+        }
+      } catch (error) {
+        console.error('Failed to load entries:', error);
+        showToast('Failed to load data. Please refresh.');
+      }
+    }
+
+    async function createEntry(entry) {
+      try {
+        const data = await apiRequest('/api/tracker/entries', {
+          method: 'POST',
+          body: JSON.stringify(entry)
+        });
+        if (data && data.success) {
+          allEntries.unshift(data.entry);
+          return true;
+        } else {
+          showToast(data.message || 'Failed to save.');
+          return false;
+        }
+      } catch (error) {
+        console.error('Create entry error:', error);
+        showToast('Connection error. Please try again.');
+        return false;
+      }
+    }
+
+    // ===================== HELPER =====================
+    function getTodayString() {
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+
+    // ===================== TAB NAVIGATION =====================
+    function showTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-rose-400', 'text-white');
+        btn.classList.add('bg-white/50', 'text-gray-600');
+      });
+
+      const tabEl = document.getElementById(`tab-${tabName}`);
+      const btnEl = document.querySelector(`[data-tab="${tabName}"]`);
+      if (tabEl) tabEl.classList.remove('hidden');
+      if (btnEl) {
+        btnEl.classList.remove('bg-white/50', 'text-gray-600');
+        btnEl.classList.add('bg-rose-400', 'text-white');
+      }
+
+      if (tabName === 'symptoms') loadTodaySymptoms();
+      else if (tabName === 'history') renderHistory();
+      else if (tabName === 'calendar') renderCalendar();
+    }
+
+    // ===================== LOGOUT =====================
+    function handleLogout() {
+      localStorage.removeItem('tracker_token');
+      localStorage.removeItem('tracker_user');
+      window.location.href = '/';
+    }
+
+    // ===================== CALENDAR =====================
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      const monthLabel = document.getElementById('calendar-month');
+      if (!grid || !monthLabel) return;
+
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      monthLabel.textContent = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+
+      const periodDays = new Set(
+        allEntries
+          .filter(d => d.type === 'log' && d.flowLevel && d.flowLevel !== 'none')
+          .map(d => d.date)
+      );
+      const symptomDays = new Set(
+        allEntries
+          .filter(d => d.type === 'symptom' && d.symptoms && d.symptoms.length > 0)
+          .map(d => d.date)
+      );
+
+      grid.innerHTML = '';
+
+      for (let i = 0; i < firstDay; i++) {
+        grid.appendChild(document.createElement('div'));
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+        const hasPeriod = periodDays.has(dateStr);
+        const hasSymptom = symptomDays.has(dateStr);
+
+        const dayDiv = document.createElement('div');
+        dayDiv.textContent = day;
+        dayDiv.className = 'calendar-day w-10 h-10 flex items-center justify-center rounded-full text-sm cursor-pointer mx-auto';
+
+        if (hasPeriod) dayDiv.classList.add('has-period');
+        if (hasSymptom && !hasPeriod) dayDiv.classList.add('has-symptom');
+        if (isToday) dayDiv.classList.add('today', 'font-bold');
+
+        dayDiv.onclick = () => {
+          showTab('log');
+          showToast(`Logging for ${dateStr}`);
+        };
+        grid.appendChild(dayDiv);
+      }
+    }
+
+    function changeMonth(delta) {
+      currentMonth.setMonth(currentMonth.getMonth() + delta);
+      renderCalendar();
+    }
+
+    // ===================== FLOW & MOOD =====================
+    function setFlow(level) {
+      selectedFlow = level;
+      document.querySelectorAll('.flow-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.flow === level);
+      });
+    }
+
+    function setMood(mood) {
+      selectedMood = mood;
+      document.querySelectorAll('.mood-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mood === mood);
+      });
+    }
+
+    function resetLogForm() {
+      selectedFlow = 'none';
+      selectedMood = '';
+      document.querySelectorAll('.flow-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+      const notesInput = document.getElementById('notes-input');
+      if (notesInput) notesInput.value = '';
+    }
+
+    // ===================== SAVE LOG (with auto-advance) =====================
+    async function saveLog() {
+      const btn = document.getElementById('save-log-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const notes = document.getElementById('notes-input').value.trim();
+      const today = getTodayString();
+
+      const success = await createEntry({
+        type: 'log',
+        date: today,
+        flowLevel: selectedFlow,
+        mood: selectedMood,
+        notes: notes
+      });
+
+      if (success) {
+        showToast('Entry saved successfully! 🌸');
+        resetLogForm();
+        updateDashboard();
+        updateProgress();
+        renderCalendar();
+
+        // Auto-advance to symptoms tab
+        advanceToNextTab('log');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Save & Continue to Symptoms →';
+    }
+
+    // ===================== SYMPTOMS =====================
+    function toggleSymptom(symptom) {
+      const btn = document.querySelector(`[data-symptom="${symptom}"]`);
+      if (!btn) return;
+
+      const index = selectedSymptoms.indexOf(symptom);
+      if (index > -1) {
+        selectedSymptoms.splice(index, 1);
+        btn.classList.remove('active');
+      } else {
+        selectedSymptoms.push(symptom);
+        btn.classList.add('active');
+      }
+      updateSymptomDisplay();
+    }
+
+    function updateSymptomDisplay() {
+      const displayEl = document.getElementById('selected-symptoms-display');
+      const countEl = document.getElementById('symptom-count');
+      const listEl = document.getElementById('symptom-list-text');
+      if (!displayEl || !countEl || !listEl) return;
+
+      if (selectedSymptoms.length > 0) {
+        displayEl.classList.remove('hidden');
+        countEl.textContent = selectedSymptoms.length;
+        listEl.textContent = selectedSymptoms.map(s => symptomLabels[s] || s).join(', ');
+      } else {
+        displayEl.classList.add('hidden');
+      }
+    }
+
+    function resetSymptomsForm() {
+      selectedSymptoms = [];
+      document.querySelectorAll('.symptom-chip').forEach(c => c.classList.remove('active'));
+      updateSymptomDisplay();
+    }
+
+    function loadTodaySymptoms() {
+      const today = getTodayString();
+      const todaySymptomRecords = allEntries.filter(d => d.type === 'symptom' && d.date === today);
+
+      const sectionEl = document.getElementById('today-symptoms-section');
+      const listEl = document.getElementById('today-symptoms-list');
+      if (!sectionEl || !listEl) return;
+
+      if (todaySymptomRecords.length > 0) {
+        sectionEl.classList.remove('hidden');
+        listEl.innerHTML = '';
+
+        const allSymps = new Set();
+        todaySymptomRecords.forEach(record => {
+          if (record.symptoms && Array.isArray(record.symptoms)) {
+            record.symptoms.forEach(s => { if (s.trim()) allSymps.add(s.trim()); });
+          }
+        });
+
+        allSymps.forEach(symptom => {
+          const chip = document.createElement('span');
+          chip.className = 'px-3 py-1 rounded-full text-xs bg-gradient-to-r from-pink-200 to-rose-200 text-rose-700 font-medium';
+          chip.textContent = symptomLabels[symptom] || symptom;
+          listEl.appendChild(chip);
+        });
+      } else {
+        sectionEl.classList.add('hidden');
+      }
+    }
+
+    // ===================== SAVE SYMPTOMS (with auto-advance) =====================
+    async function saveSymptoms() {
+      if (selectedSymptoms.length === 0) {
+        showToast('Please select at least one symptom 🩺');
+        return;
+      }
+
+      const btn = document.getElementById('save-symptoms-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const today = getTodayString();
+
+      const success = await createEntry({
+        type: 'symptom',
+        date: today,
+        symptoms: selectedSymptoms
+      });
+
+      if (success) {
+        showToast(`${selectedSymptoms.length} symptom(s) saved! 💪`);
+        resetSymptomsForm();
+        loadTodaySymptoms();
+        updateDashboard();
+        updateProgress();
+        renderCalendar();
+
+        // Auto-advance to reminders tab
+        advanceToNextTab('symptoms');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Save & Continue to Reminders →';
+    }
+
+    // ===================== REMINDERS =====================
+    function toggleReminder() {
+      reminderEnabled = !reminderEnabled;
+      const toggle = document.getElementById('reminder-toggle');
+      const timeSection = document.getElementById('reminder-time-section');
+      const statusDisplay = document.getElementById('reminder-status');
+
+      if (reminderEnabled) {
+        toggle.classList.remove('bg-gray-300');
+        toggle.classList.add('bg-rose-400');
+        toggle.querySelector('span').style.transform = 'translateX(24px)';
+        timeSection.classList.remove('hidden');
+        statusDisplay.textContent = 'On';
+      } else {
+        toggle.classList.add('bg-gray-300');
+        toggle.classList.remove('bg-rose-400');
+        toggle.querySelector('span').style.transform = 'translateX(0)';
+        timeSection.classList.add('hidden');
+        statusDisplay.textContent = 'Off';
+      }
+    }
+
+    // ===================== SAVE REMINDER (with auto-advance) =====================
+    async function saveReminder() {
+      const time = document.getElementById('reminder-time').value;
+
+      const success = await createEntry({
+        type: 'reminder',
+        date: '',
+        reminderTime: time,
+        reminderEnabled: true
+      });
+
+      if (success) {
+        showToast(`Reminder set for ${time}! ⏰`);
+        updateDashboard();
+        updateProgress();
+
+        // Auto-advance to history tab
+        advanceToNextTab('reminders');
+      }
+    }
+
+    // ===================== HISTORY =====================
+    function renderHistory() {
+      const container = document.getElementById('history-list');
+      if (!container) return;
+
+      const sorted = [...allEntries].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+
+      if (sorted.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-8">No entries yet. Start logging to see your history!</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      sorted.slice(0, 50).forEach((entry, i) => {
+        const card = document.createElement('div');
+        card.className = 'bg-white/50 rounded-2xl p-4 animate-slide-in';
+        card.style.animationDelay = `${i * 0.05}s`;
+
+        let content = '';
+        const dateDisplay = entry.date || 'Unknown date';
+
+        if (entry.type === 'log') {
+          content = `
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-gray-700">📝 Daily Log</span>
+              <span class="text-xs text-gray-400">${dateDisplay}</span>
+            </div>
+            <div class="flex flex-wrap gap-2 text-sm">
+              ${entry.flowLevel && entry.flowLevel !== 'none' ? `<span class="px-2 py-1 bg-rose-100 text-rose-600 rounded-full text-xs">🩸 ${entry.flowLevel}</span>` : ''}
+              ${entry.mood ? `<span class="px-2 py-1 bg-purple-100 text-purple-600 rounded-full text-xs">${entry.mood} Mood</span>` : ''}
+              ${entry.notes ? `<p class="w-full text-gray-500 text-xs mt-1">"${entry.notes}"</p>` : ''}
+            </div>`;
+        } else if (entry.type === 'symptom') {
+          const symptoms = entry.symptoms && Array.isArray(entry.symptoms)
+            ? entry.symptoms.map(s => symptomLabels[s.trim()] || s.trim()).join(', ')
+            : '';
+          content = `
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-gray-700">🩺 Symptoms</span>
+              <span class="text-xs text-gray-400">${dateDisplay}</span>
+            </div>
+            <p class="text-sm text-gray-600">${symptoms}</p>`;
+        } else if (entry.type === 'reminder') {
+          content = `
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-700">⏰ Reminder set</span>
+              <span class="text-xs text-gray-400">${entry.reminderTime || ''}</span>
+            </div>`;
+        }
+
+        card.innerHTML = content;
+        container.appendChild(card);
+      });
+
+      if (sorted.length > 50) {
+        const note = document.createElement('p');
+        note.className = 'text-center text-sm text-gray-400 mt-4';
+        note.textContent = `Showing 50 of ${sorted.length} entries`;
+        container.appendChild(note);
+      }
+    }
+
+    // ===================== DASHBOARD UPDATE =====================
+    function updateDashboard() {
+      const today = getTodayString();
+
+      // Period days
+      const periodDates = new Set(
+        allEntries
+          .filter(d => d.type === 'log' && d.flowLevel && d.flowLevel !== 'none')
+          .map(d => d.date)
+      );
+      document.getElementById('period-days').textContent = periodDates.size;
+
+      // Today's mood
+      const todayLogs = allEntries
+        .filter(d => d.type === 'log' && d.date === today && d.mood)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      document.getElementById('current-mood').textContent = todayLogs.length > 0 ? todayLogs[0].mood : '--';
+
+      // Cycle day
+      if (periodDates.size > 0) {
+        const sortedDates = Array.from(periodDates).sort((a, b) => new Date(b) - new Date(a));
+        const lastPeriod = new Date(sortedDates[0]);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        lastPeriod.setHours(0, 0, 0, 0);
+        const diffDays = Math.max(1, Math.ceil((now - lastPeriod) / (1000 * 60 * 60 * 24)) + 1);
+        document.getElementById('cycle-day').textContent = diffDays;
+      } else {
+        document.getElementById('cycle-day').textContent = '--';
+      }
+
+      // Reminder status
+      const reminder = allEntries.find(d => d.type === 'reminder' && d.reminderEnabled);
+      if (reminder) {
+        document.getElementById('reminder-status').textContent = 'On';
+        reminderEnabled = true;
+        const toggle = document.getElementById('reminder-toggle');
+        if (toggle) {
+          toggle.classList.remove('bg-gray-300');
+          toggle.classList.add('bg-rose-400');
+          toggle.querySelector('span').style.transform = 'translateX(24px)';
+        }
+        const timeSection = document.getElementById('reminder-time-section');
+        if (timeSection) timeSection.classList.remove('hidden');
+        const timeInput = document.getElementById('reminder-time');
+        if (timeInput && reminder.reminderTime) timeInput.value = reminder.reminderTime;
+      }
+    }
+
+    // ===================== TOAST =====================
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      if (!toast || !toastMsg) return;
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+
+      toastMsg.textContent = message;
+      toast.style.opacity = '1';
+      toast.style.pointerEvents = 'auto';
+
+      toastTimeout = setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.pointerEvents = 'none';
+      }, 3000);
+    }
+
+    // ===================== INIT =====================
+    document.addEventListener('DOMContentLoaded', initApp);
+    if (document.readyState !== 'loading') initApp();
+  </script>
+</body>
+</html>
